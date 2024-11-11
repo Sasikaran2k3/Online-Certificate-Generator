@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Certificate Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        /* Previous styles remain the same */
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .step {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .canvas-container {
+            position: relative;
+            margin: 20px 0;
+            border: 1px solid #ccc;
+            overflow: hidden;
+        }
+        canvas {
+            max-width: 100%;
+            height: auto;
+        }
+        
+        /* New and modified styles for resizable text boxes */
+        .text-box {
+            position: absolute;
+            border: 1px solid #000;
+            cursor: move;
+            padding: 5px;
+            min-width: 100px;
+            min-height: 30px;
+            background-color: rgba(255,255,255,0.7);
+        }
+        
+        .resize-handle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #007bff;
+            border: 1px solid #fff;
+            border-radius: 50%;
+        }
+        
+        .resize-handle.tl {
+            top: -5px;
+            left: -5px;
+            cursor: nw-resize;
+        }
+        
+        .resize-handle.tr {
+            top: -5px;
+            right: -5px;
+            cursor: ne-resize;
+        }
+        
+        .resize-handle.bl {
+            bottom: -5px;
+            left: -5px;
+            cursor: sw-resize;
+        }
+        
+        .resize-handle.br {
+            bottom: -5px;
+            right: -5px;
+            cursor: se-resize;
+        }
+
+        .controls {
+            margin: 10px 0;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        input, select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .preview {
+            margin-top: 20px;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Previous HTML structure remains the same -->
+    <div class="container">
+        <h1>Certificate Generator</h1>
+        
+        <div class="step" id="step1">
+            <h2>Step 1: Upload Certificate Template</h2>
+            <input type="file" id="templateUpload" accept="image/*">
+            <div id="selection-form">
+                <label>
+                  <input type="radio" name="genOption" value="single" onclick="showSingleForm()"> Single
+                </label>
+                <label>
+                  <input type="radio" name="genOption" value="bulk" onclick="showBulkForm()"> Bulk
+                </label>
+            </div>
+        </div>
+        <div id="single-form" style="display:none;">
+        <div class="step" id="step2">
+            <h2>Step 2: Enter Name</h2>
+            <input type="text" id="userInput">
+        </div>
+
+        <div class="step" id="step3" style="display: none;">
+            <h2>Step 3: Select Column</h2>
+            <select id="columnSelect"></select>
+        </div>
+
+        <div class="step" id="step4" style="display: none;">
+            <h2>Step 4: Design Certificate</h2>
+            <div class="controls">
+                <input type="color" id="colorPicker" value="#000000">
+                <select id="fontSelect">
+                    <option value="Arial">Arial</option>
+                    <option value="Times New Roman">Times New Roman</option>
+                    <option value="Courier New">Courier New</option>
+                    <option value="Georgia">Georgia</option>
+                    <option value="Verdana">Verdana</option>
+                </select>
+                <input type="number" id="fontSize" value="24" min="8" max="72">
+                <button onclick="addTextBox(1)">Add Text Box</button>
+            </div>
+            <div class="canvas-container">
+                <img id="certificateCanvas"></canvas>
+            </div>
+        </div>
+
+        <div class="step" id="step5" style="display: none;">
+            <h2>Step 5: Generate Certificates</h2>
+            <button onclick="generateCertificates(1)">Generate & Download Certificates</button>
+        </div>
+
+        <div class="loading" id="loading">
+            Generating certificates... Please wait...
+        </div>
+        </div>
+        <div id="bulk-form" style="display:none;">
+            <div class="step" id="step2">
+                <h2>Step 2: Upload Excel File</h2>
+                <input type="file" id="dataUpload" accept=".xlsx,.csv">
+            </div>
+    
+            <div class="step" id="step3" style="display: none;">
+                <h2>Step 3: Select Column</h2>
+                <select id="columnSelect"></select>
+            </div>
+    
+            <div class="step" id="step4" style="display: none;">
+                <h2>Step 4: Design Certificate</h2>
+                <div class="controls">
+                    <input type="color" id="colorPicker" value="#000000">
+                    <select id="fontSelect">
+                        <option value="Arial">Arial</option>
+                        <option value="Times New Roman">Times New Roman</option>
+                        <option value="Courier New">Courier New</option>
+                        <option value="Georgia">Georgia</option>
+                        <option value="Verdana">Verdana</option>
+                    </select>
+                    <input type="number" id="fontSize" value="24" min="8" max="72">
+                    <button onclick="addTextBox(0)">Add Text Box</button>
+                </div>
+                <div class="canvas-container">
+                    <img id="certificateCanvas"></canvas>
+                </div>
+            </div>
+    
+            <div class="step" id="step5" style="display: none;">
+                <h2>Step 5: Generate Certificates</h2>
+                <button onclick="generateCertificates(0)">Generate & Download Certificates</button>
+            </div>
+    
+            <div class="loading" id="loading">
+                Generating certificates... Please wait...
+            </div>
+            </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script>
+        
+        let template = null;
+        let data = null;
+        let textBoxes = [];
+        let selectedColumn = '';
+        let isDragging = false;
+        let isResizing = false;
+        let currentTextBox = null;
+        let currentHandle = null;
+        let startX, startY, originalX, originalY, originalWidth, originalHeight;
+
+        // Previous event listeners and functions remain the same
+        document.getElementById('templateUpload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const img = new Image();
+                    img.onload = function() {
+                        template = img;
+                        initCanvas();
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        document.getElementById('userInput').addEventListener('input', function(e) {
+            document.getElementById('step4').style.display = 'block';
+            document.getElementById('step5').style.display = 'block';
+        });
+
+        function initCanvas() {
+            const canvas = document.getElementById('certificateCanvas');
+            canvas.src = template.src;
+            canvas.style.width = '100%';
+            canvas.style.height = '100%';
+        }
+
+        // Modified and new functions for resizable text boxes
+        function addTextBox(flag) {
+            const container = document.querySelector('.canvas-container');
+            const textBox = document.createElement('div');
+            textBox.className = 'text-box';
+
+            // Set selectedColumn from the dropdown
+            selectedColumn = document.getElementById('columnSelect').value;
+
+            // Check if data and selectedColumn are valid
+            if (flag === 0) {
+                if (data && data.length > 0 && selectedColumn in data[0]) {
+                    textBox.textContent = data[0][selectedColumn]; // Set text to first row value
+                } else {
+                    textBox.textContent = 'No data available'; // Fallback text
+                }
+            } else {
+                textBox.textContent = document.getElementById('userInput').value;
+            }
+
+            // Center the text content and set font size dynamically
+            textBox.style.textAlign = 'center';
+            textBox.style.lineHeight = '50px'; // Assuming the height is 50px as set below
+            textBox.style.fontSize = document.getElementById('fontSize').value + 'px'; // Dynamically set font size
+
+            textBox.style.left = '50px';
+            textBox.style.top = '50px';
+            textBox.style.width = '200px';
+            textBox.style.height = '50px';
+
+            // Add resize handles
+            const handles = ['tl', 'tr', 'bl', 'br'];
+            handles.forEach(pos => {
+                const handle = document.createElement('div');
+                handle.className = `resize-handle ${pos}`;
+                handle.dataset.handle = pos;
+                textBox.appendChild(handle);
+            });
+
+            container.appendChild(textBox);
+            textBoxes.push(textBox);
+
+            // Add event listeners
+            textBox.addEventListener('mousedown', startDragging);
+            textBox.querySelectorAll('.resize-handle').forEach(handle => {
+                handle.addEventListener('mousedown', startResizing);
+            });
+
+            // Update font size dynamically
+            document.getElementById('fontSize').addEventListener('change', function() {
+                textBox.style.fontSize = this.value + 'px';
+            });
+        }
+
+        function startDragging(e) {
+            if (e.target.classList.contains('resize-handle')) return;
+            
+            isDragging = true;
+            currentTextBox = e.target.closest('.text-box');
+            startX = e.clientX;
+            startY = e.clientY;
+            originalX = currentTextBox.offsetLeft;
+            originalY = currentTextBox.offsetTop;
+
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', stopDragging);
+        }
+
+        function startResizing(e) {
+            e.stopPropagation();
+            isResizing = true;
+            currentTextBox = e.target.closest('.text-box');
+            currentHandle = e.target.dataset.handle;
+            startX = e.clientX;
+            startY = e.clientY;
+            originalWidth = currentTextBox.offsetWidth;
+            originalHeight = currentTextBox.offsetHeight;
+            originalX = currentTextBox.offsetLeft;
+            originalY = currentTextBox.offsetTop;
+
+            document.addEventListener('mousemove', resize);
+            document.addEventListener('mouseup', stopResizing);
+        }
+
+        function resize(e) {
+            if (!isResizing) return;
+
+            const deltaX = e.clientX - startX;
+            const deltaY = e.clientY - startY;
+
+            switch (currentHandle) {
+                case 'tl':
+                    currentTextBox.style.width = `${originalWidth - deltaX}px`;
+                    currentTextBox.style.height = `${originalHeight - deltaY}px`;
+                    currentTextBox.style.left = `${originalX + deltaX}px`;
+                    currentTextBox.style.top = `${originalY + deltaY}px`;
+                    break;
+                case 'tr':
+                    currentTextBox.style.width = `${originalWidth + deltaX}px`;
+                    currentTextBox.style.height = `${originalHeight - deltaY}px`;
+                    currentTextBox.style.top = `${originalY + deltaY}px`;
+                    break;
+                case 'bl': 
+                    currentTextBox.style.width = `${originalWidth - deltaX}px`;
+                    currentTextBox.style.height = `${originalHeight + deltaY}px`;
+                    currentTextBox.style.left = `${originalX + deltaX}px`;
+                    break;
+                case 'br':
+                    currentTextBox.style.width = `${originalWidth + deltaX}px`;
+                    currentTextBox.style.height = `${originalHeight + deltaY}px`;
+                    break;
+            }
+        }
+
+        function stopResizing() {
+            isResizing = false;
+            document.removeEventListener('mousemove', resize);
+            document.removeEventListener('mouseup', stopResizing);
+        }
+
+        function drag(e) {
+            if (!isDragging) return;
+
+            const deltaX = e.clientX - startX;
+            const deltaY = e.clientY - startY;
+
+            currentTextBox.style.left = `${originalX + deltaX}px`;
+            currentTextBox.style.top = `${originalY + deltaY}px`;
+        }
+
+        function stopDragging() {
+            isDragging = false;
+            document.removeEventListener('mousemove', drag);
+            document.removeEventListener('mouseup', stopDragging);
+        }
+
+        // New function for text alignment
+        function alignText(alignment) {
+            if (currentTextBox) {
+                currentTextBox.style.textAlign = alignment;
+            }
+        }
+
+        // Generate certificates function remains the same
+        async function generateCertificates(flag) {
+    const loading = document.getElementById('loading');
+    loading.style.display = 'block';
+
+    const zip = new JSZip();
+    const container = document.querySelector('.canvas-container');
+    selectedColumn = document.getElementById('columnSelect').value;
+    if (flag === 1) { // Single Certificate
+        // Update text content for single entry
+        textBoxes.forEach(box => {
+            box.textContent = document.getElementById("userInput").value; // Use first row data for single
+            box.style.color = document.getElementById('colorPicker').value;
+            box.style.fontFamily = document.getElementById('fontSelect').value;
+            box.style.fontSize = document.getElementById('fontSize').value + 'px';
+        });
+        console.log("Start");
+        // Convert to image
+        await new Promise(resolve => setTimeout(resolve, 100)); // Wait for DOM to update
+        const canvas = await html2canvas(container, { useCORS: true, allowTaint: true, backgroundColor: null, scale: 2 });
+        const dataUrl = canvas.toDataURL('image/png', 1.0);
+        console.log("Start 1 ");
+        // Download as single image
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.download = 'certificate.png';
+        console.log("Start 2 ");
+        link.click();
+        console.log("Start 3 ");
+
+    }
+    else{
+    // Process each row of data
+    for (let i = 0; i < data.length; i++) {
+        // Update text content for each text box with current row's data
+        textBoxes.forEach(box => {
+            box.textContent = data[i][selectedColumn];
+            // Apply current styling
+            box.style.color = document.getElementById('colorPicker').value;
+            box.style.fontFamily = document.getElementById('fontSelect').value;
+            box.style.fontSize = document.getElementById('fontSize').value + 'px';
+        });
+
+        // Wait a bit for the DOM to update
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Convert the current state to image
+        try {
+            const canvas = await html2canvas(container, {
+                useCORS: true,
+                allowTaint: true,
+                backgroundColor: null,
+                scale: 2, // Increase quality
+                logging: false,
+                onclone: function(clonedDoc) {
+                    // Ensure all elements are visible in cloned document
+                    const clonedBoxes = clonedDoc.querySelectorAll('.text-box');
+                    clonedBoxes.forEach(box => {
+                        box.style.display = 'block';
+                        // Remove resize handles from final image
+                        box.querySelectorAll('.resize-handle').forEach(handle => {
+                            handle.style.display = 'none';
+                        });
+                        // Remove borders from text boxes in final image
+                        box.style.border = 'none';
+                        box.style.backgroundColor = 'transparent';
+                    });
+                }
+            });
+
+            // Convert canvas to blob
+            const dataUrl = canvas.toDataURL('image/png', 1.0);
+            const base64Data = dataUrl.split(',')[1];
+            
+            // Add to zip with name based on the data
+            const fileName = `certificate_${data[i][selectedColumn].replace(/[^a-z0-9]/gi, '_').toLowerCase()}.png`;
+            zip.file(fileName, base64Data, {base64: true});
+
+        } catch (error) {
+            console.error(`Error processing certificate ${i + 1}:`, error);
+        }
+
+        // Update loading message
+        loading.textContent = `Generating certificates... ${i + 1}/${data.length}`;
+    }
+}
+
+    try {
+        // Generate and download zip file
+        const content = await zip.generateAsync({type: 'blob'});
+        saveAs(content, 'certificates.zip');
+    } catch (error) {
+        console.error('Error creating zip file:', error);
+        alert('Error creating zip file. Please try again.');
+    }
+
+    loading.style.display = 'none';
+}
+function showSingleForm() {
+    document.getElementById("single-form").style.display = "block";
+    document.getElementById("bulk-form").style.display = "none";
+  }
+  function showBulkForm() {
+    document.getElementById("bulk-form").style.display = "block";
+    document.getElementById("single-form").style.display = "none";
+  }
+    </script>
+</body>
+</html>

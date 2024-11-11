@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Certificate Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Base styles */
+:root {
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --bg-dark: #111827;
+    --bg-darker: #0f172a;
+    --text-light: #f3f4f6;
+    --text-gray: #9ca3af;
+    --border-color: #374151;
+    --card-bg: #1f2937;
+}
+
+body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background-color: var(--bg-dark);
+    color: var(--text-light);
+    margin: 0;
+    padding: 20px;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    background-color: var(--card-bg);
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+/* Typography */
+h1 {
+    color: var(--text-light);
+    font-size: 2.25rem;
+    font-weight: 700;
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+h2 {
+    color: var(--text-light);
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+}
+
+/* Progress bar */
+.progress-bar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 1.5rem;
+}
+
+.progress-step {
+    flex: 1;
+    height: 4px;
+    background-color: var(--border-color);
+    border-radius: 2px;
+    transition: background-color 0.5s ease;
+}
+
+.progress-step.active {
+    background-color: var(--primary);
+}
+
+.step-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    color: var(--text-gray);
+    font-size: 0.875rem;
+}
+
+/* Steps animation */
+.step {
+    display: none;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+}
+
+.step.active {
+    display: block;
+    opacity: 1;
+}
+
+/* Form elements */
+input[type="file"],
+input[type="text"],
+input[type="number"],
+select {
+    background-color: var(--bg-darker);
+    border: 1px solid var(--border-color);
+    color: var(--text-light);
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    width: 100%;
+    margin-bottom: 1rem;
+    transition: border-color 0.3s ease;
+}
+
+input[type="file"]:hover,
+input[type="text"]:hover,
+input[type="number"]:hover,
+select:hover {
+    border-color: var(--primary);
+}
+
+input[type="radio"] {
+    margin-right: 0.5rem;
+}
+
+/* Buttons */
+button {
+    background-color: var(--primary);
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+button:hover {
+    background-color: var(--primary-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+button:active {
+    transform: translateY(0);
+}
+
+/* Canvas container */
+.canvas-container {
+    background-color: var(--bg-darker);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 1.5rem 0;
+    overflow: hidden;
+}
+
+/* Controls section */
+.controls {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    align-items: center;
+    background-color: var(--bg-darker);
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+}
+
+/* Text boxes */
+.text-box {
+    background-color: rgba(31, 41, 55, 0.8);
+    border: 1px solid var(--border-color);
+    padding: 0.75rem;
+    min-width: 120px;
+    min-height: 40px;
+    backdrop-filter: blur(4px);
+}
+
+.resize-handle {
+    width: 8px;
+    height: 8px;
+    background-color: var(--primary);
+    border: 2px solid var(--text-light);
+}
+
+/* Loading state */
+.loading {
+    display: none;
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-gray);
+    background-color: var(--bg-darker);
+    border-radius: 8px;
+    margin: 1.5rem 0;
+}
+
+/* Selection form */
+#selection-form {
+    display: flex;
+    gap: 2rem;
+    margin: 1.5rem 0;
+    padding: 1rem;
+    background-color: var(--bg-darker);
+    border-radius: 8px;
+}
+
+
+
+input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+input[type="color"]::-webkit-color-swatch {
+    border: none;
+    border-radius: 4px;
+}
+.controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .controls input, .controls select {
+            width: auto;
+            margin-bottom: 0;
+        }
+        .resize-handle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #8b4513;
+            border: 1px solid #fff;
+            border-radius: 50%;
+        }
+        .text-box {
+            position: absolute;
+            border: 1px solid #8b4513;
+            padding: 5px;
+            cursor: move;
+            background-color: rgba(255, 255, 255, 0.7);
+            min-width: 100px;
+            min-height: 30px;
+            color: black;
+        }
+        .resize-handle.tl {
+            top: -5px;
+            left: -5px;
+            cursor: nw-resize;
+        }
+        .resize-handle.tr {
+            top: -5px;
+            right: -5px;
+            cursor: ne-resize;
+        }
+        .resize-handle.bl {
+            bottom: -5px;
+            left: -5px;
+            cursor: sw-resize;
+        }
+        .resize-handle.br {
+            bottom: -5px;
+            right: -5px;
+            cursor: se-resize;
+        }
+        /* Color picker override */
+input[type="color"] {
+    padding: 0;
+    width: 48px;
+    height: 48px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+}
+    </style>
+</head>
+<body>
+    <!-- Previous HTML structure remains the same -->
+    <div class="container">
+        <h1>Certificate Generator</h1>
+        <div class="progress-bar">
+            <div class="progress-step active"></div>
+            <div class="progress-step"></div>
+            <div class="progress-step"></div>
+            <div class="progress-step"></div>
+        </div>
+        <div class="step-labels">
+            <span>Upload</span>
+            <span>Details</span>
+            <span>Design</span>
+            <span>Generate</span>
+        </div>
+        <div class="step active" id="step1">
+            <h2>Step 1: Upload Certificate Template</h2>
+            <input type="file" id="templateUpload" accept="image/*">
+            <div id="selection-form">
+                <label>
+                  <input type="radio" name="genOption" value="single" onclick="showSingleForm()"> Single
+                </label>
+                <label>
+                  <input type="radio" name="genOption" value="bulk" onclick="showBulkForm()"> Bulk
+                </label>
+            </div>
+            <button onclick="nextStep()"> Next </button>
+        </div>
+        <div id="single-form">
+        <div class="step" id="step2">
+            <h2>Step 2: Enter Name</h2>
+            <input type="text" id="userInput">
+            <button onclick="nextStep()"> Next </button>
+        </div>
+
+        <div class="step" id="step3" >
+            <h2>Step 3: Design Certificate</h2>
+            <div class="controls">
+                <input type="color" id="colorPicker" value="#000000" onchange="updatePreview('color')">
+                <select id="fontSelect" onchange="updatePreview('font')">
+                    <option value="Arial">Arial</option>
+                    <option value="Times New Roman">Times New Roman</option>
+                    <option value="Courier New">Courier New</option>
+                    <option value="Georgia">Georgia</option>
+                    <option value="Verdana">Verdana</option>
+                </select>
+                <input type="number" id="fontSize" value="24" min="8" max="72" onchange="updatePreview('font-size')">
+                <button onclick="addTextBox(1)">Add Text Box</button>
+            </div>
+            <div class="canvas-container">
+                <img id="certificateCanvas"></canvas>
+            </div>
+            <button onclick="generateCertificates(1)">Generate & Download Certificates</button>
+        </div>
+
+        <div class="step" id="step4">
+            <h2>Thanks For Using Our Certificate Generator</h2>
+        </div>
+
+        <div class="loading" id="Sloading">
+            Generating certificates... Please wait...
+        </div>
+        </div>
+        <div id="bulk-form">
+            <div class="step" id="Bstep2">
+                <h2>Step 2: Upload Excel File</h2>
+                <input type="file" id="dataUpload" accept=".xlsx,.csv">
+                <h2>Select Column</h2>
+                <select id="columnSelect"></select>
+                <button onclick="nextStep()"> Next </button>
+            </div>
+    
+            <div class="step" id="Bstep3" >
+                <h2>Step 3: Design Certificate</h2>
+                <div class="controls">
+                    <input type="color" id="colorPicker" value="#000000" onchange="updatePreview('color')" >
+                    <select id="fontSelect" onchange="updatePreview('font')">
+                        <option value="Arial">Arial</option>
+                        <option value="Times New Roman">Times New Roman</option>
+                        <option value="Courier New">Courier New</option>
+                        <option value="Georgia">Georgia</option>
+                        <option value="Verdana">Verdana</option>
+                    </select>
+                    <input type="number" id="fontSize" value="24" min="8" max="72" onchange="updatePreview('font-size')">
+                    <button onclick="addTextBox(0)">Add Text Box</button>
+                </div>
+                <div class="canvas-container">
+                    <img id="certificateCanvas"></canvas>
+                </div>
+                <button onclick="generateCertificates(0)">Generate & Download Certificates</button>
+            </div>
+    
+            <div class="step" id="Bstep4">
+                <h2>Thanks For Using Our Certificate Generator</h2>
+            </div>
+    
+            <div class="loading" id="loading">
+                Generating certificates... Please wait...
+            </div>
+            </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script>
+        
+        let template = null;
+        let data = null;
+        let textBoxes = [];
+        let selectedColumn = '';
+        let isDragging = false;
+        let isResizing = false;
+        let currentTextBox = null;
+        let currentHandle = null;
+        let startX, startY, originalX, originalY, originalWidth, originalHeight;
+        let currentStep = 1;
+        let isSingleMode = false;
+
+        function nextStep() {
+            if(isSingleMode)
+            {   
+                console.log(`step${currentStep}`);
+                document.getElementById(`step${currentStep}`).classList.remove('active');
+                currentStep++;
+                document.getElementById(`step${currentStep}`).classList.add('active');
+            }
+            else
+            {
+                if(currentStep == 1)
+                    document.getElementById(`step${currentStep}`).classList.remove('active');
+                else
+                    document.getElementById(`Bstep${currentStep}`).classList.remove('active');
+                currentStep++;
+                document.getElementById(`Bstep${currentStep}`).classList.add('active');
+                console.log(`Bstep${currentStep}`);
+
+            }
+            updateProgressBar();
+
+        }
+
+        function updateProgressBar() {
+            const steps = document.querySelectorAll('.progress-step');
+            steps.forEach((step, index) => {
+                if (index < currentStep) {
+                    step.classList.add('active');
+                } else {
+                    step.classList.remove('active');
+                }
+            });
+        }
+
+        // Previous event listeners and functions remain the same
+        document.getElementById('templateUpload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const img = new Image();
+                    img.onload = function() {
+                        template = img;
+                        initCanvas();
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // document.getElementById('userInput').addEventListener('input', function(e) {
+        //     document.getElementById('step4').style.display = 'block';
+        //     document.getElementById('step5').style.display = 'block';
+        // });
+
+        document.getElementById('dataUpload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const workbook = XLSX.read(event.target.result, {type: 'binary'});
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    data = XLSX.utils.sheet_to_json(firstSheet);
+                    
+                    if (data.length > 0) {
+                        const columns = Object.keys(data[0]);
+                        const select = document.getElementById('bulk-form').querySelector('#columnSelect');
+                        select.innerHTML = columns.map(col => 
+                            `<option value="${col}">${col}</option>`
+                        ).join('');
+                        // document.getElementById('bulk-form').querySelector('#step3').style.display = 'block';
+                        // document.getElementById('bulk-form').querySelector('#step4').style.display = 'block';
+                        // document.getElementById('bulk-form').querySelector('#step5').style.display = 'block';
+                    }
+                };
+                reader.readAsBinaryString(file);
+            }
+        });
+
+        function initCanvas() {
+            const canvas = document.getElementById('certificateCanvas');
+            canvas.src = template.src;
+            canvas.style.width = '100%';
+            canvas.style.height = '100%';
+            const canvas1 = document.getElementById('bulk-form').querySelector('#certificateCanvas');
+            canvas1.src = template.src;
+            canvas1.style.width = '100%';
+            canvas1.style.height = '100%';
+        }
+
+        // Modified and new functions for resizable text boxes
+        function addTextBox(flag) {
+            const container = flag === 0 ? document.getElementById('bulk-form').querySelector('.canvas-container') : document.querySelector('.canvas-container');
+            const textBox = document.createElement('div');
+            textBox.className = 'text-box';
+
+            // Set selectedColumn from the dropdown
+            selectedColumn = document.getElementById('bulk-form').querySelector('#columnSelect').value;
+
+            // Check if data and selectedColumn are valid
+            if (flag === 0) {
+                if (data && data.length > 0 && selectedColumn in data[0]) {
+                    textBox.textContent = data[0][selectedColumn]; // Set text to first row value
+                } else {
+                    textBox.textContent = 'No data available'; // Fallback text
+                }
+            } else {
+                textBox.textContent = document.getElementById('userInput').value;
+            }
+
+            // Center the text content and set font size dynamically
+            textBox.style.textAlign = 'center';
+            textBox.style.lineHeight = '50px'; // Assuming the height is 50px as set below
+            textBox.style.fontSize = flag === 0 ? document.getElementById('bulk-form').querySelector('#fontSize').value + 'px' : document.querySelector('#fontSize').value + 'px'; // Dynamically set font size
+
+            const containerRect = container.getBoundingClientRect();
+            textBox.style.left = `${(containerRect.width - 200) / 2}px`;
+            textBox.style.top = `${(containerRect.height - 50) / 2}px`;
+            textBox.style.width = '200px';
+            textBox.style.height = '50px';
+
+            // Add resize handles
+            const handles = ['tl', 'tr', 'bl', 'br'];
+            handles.forEach(pos => {
+                const handle = document.createElement('div');
+                handle.className = `resize-handle ${pos}`;
+                handle.dataset.handle = pos;
+                textBox.appendChild(handle);
+            });
+
+            container.appendChild(textBox);
+            textBoxes.push(textBox);
+
+
+            // Add event listeners
+            textBox.addEventListener('mousedown', startDragging);
+            textBox.querySelectorAll('.resize-handle').forEach(handle => {
+                handle.addEventListener('mousedown', startResizing);
+            });
+
+            // Update font size dynamically
+            document.getElementById('fontSize').addEventListener('change', function() {
+                textBox.style.fontSize = this.value + 'px';
+            });
+        }
+        function updatePreview(type) {
+            console.log("Changes");
+            if (currentTextBox) {
+                switch (type) {
+                    case 'color':
+                        currentTextBox.style.color = document.getElementById('colorPicker').value;
+                        break;
+                    case 'font':
+                        currentTextBox.style.fontFamily = document.getElementById('fontSelect').value;
+                        break;
+                    case 'font-size':
+                        currentTextBox.style.fontSize = document.getElementById('fontSize').value + 'px';
+                        break;
+                }
+            }
+        }
+        function startDragging(e) {
+            if (e.target.classList.contains('resize-handle')) return;
+            
+            isDragging = true;
+            currentTextBox = e.target.closest('.text-box');
+            startX = e.clientX;
+            startY = e.clientY;
+            originalX = currentTextBox.offsetLeft;
+            originalY = currentTextBox.offsetTop;
+
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', stopDragging);
+        }
+
+        function startResizing(e) {
+            e.stopPropagation();
+            isResizing = true;
+            currentTextBox = e.target.closest('.text-box');
+            currentHandle = e.target.dataset.handle;
+            startX = e.clientX;
+            startY = e.clientY;
+            originalWidth = currentTextBox.offsetWidth;
+            originalHeight = currentTextBox.offsetHeight;
+            originalX = currentTextBox.offsetLeft;
+            originalY = currentTextBox.offsetTop;
+
+            document.addEventListener('mousemove', resize);
+            document.addEventListener('mouseup', stopResizing);
+        }
+
+        function resize(e) {
+            if (!isResizing) return;
+
+            const deltaX = e.clientX - startX;
+            const deltaY = e.clientY - startY;
+
+            switch (currentHandle) {
+                case 'tl':
+                    currentTextBox.style.width = `${originalWidth - deltaX}px`;
+                    currentTextBox.style.height = `${originalHeight - deltaY}px`;
+                    currentTextBox.style.left = `${originalX + deltaX}px`;
+                    currentTextBox.style.top = `${originalY + deltaY}px`;
+                    break;
+                case 'tr':
+                    currentTextBox.style.width = `${originalWidth + deltaX}px`;
+                    currentTextBox.style.height = `${originalHeight - deltaY}px`;
+                    currentTextBox.style.top = `${originalY + deltaY}px`;
+                    break;
+                case 'bl': 
+                    currentTextBox.style.width = `${originalWidth - deltaX}px`;
+                    currentTextBox.style.height = `${originalHeight + deltaY}px`;
+                    currentTextBox.style.left = `${originalX + deltaX}px`;
+                    break;
+                case 'br':
+                    currentTextBox.style.width = `${originalWidth + deltaX}px`;
+                    currentTextBox.style.height = `${originalHeight + deltaY}px`;
+                    break;
+            }
+        }
+
+        function stopResizing() {
+            isResizing = false;
+            document.removeEventListener('mousemove', resize);
+            document.removeEventListener('mouseup', stopResizing);
+        }
+
+        function drag(e) {
+            if (!isDragging) return;
+
+            const deltaX = e.clientX - startX;
+            const deltaY = e.clientY - startY;
+
+            currentTextBox.style.left = `${originalX + deltaX}px`;
+            currentTextBox.style.top = `${originalY + deltaY}px`;
+        }
+
+        function stopDragging() {
+            isDragging = false;
+            document.removeEventListener('mousemove', drag);
+            document.removeEventListener('mouseup', stopDragging);
+        }
+
+        // New function for text alignment
+        function alignText(alignment) {
+            if (currentTextBox) {
+                currentTextBox.style.textAlign = alignment;
+            }
+        }
+
+        async function generateCertificates(flag) {
+    const loading = document.getElementById('loading');
+    loading.style.display = 'block';
+
+    const zip = new JSZip();
+    const container = flag === 0 ? document.getElementById('bulk-form').querySelector('.canvas-container') : document.querySelector('.canvas-container');
+    selectedColumn = flag === 0 ? document.getElementById('bulk-form').querySelector('#columnSelect').value : document.getElementById('columnSelect').value;
+
+    // Remove borders and handles once before starting generation
+    const prepareTextBoxesForGeneration = () => {
+        textBoxes.forEach(box => {
+            // Apply styling
+            box.style.border = 'none';
+            box.style.backgroundColor = 'transparent';
+            box.querySelectorAll('.resize-handle').forEach(handle => {
+                handle.style.display = 'none';
+            });
+        });
+    };
+
+    // Restore editing UI after generation
+    const restoreTextBoxesUI = () => {
+        textBoxes.forEach(box => {
+            box.style.border = '1px solid #000';
+            box.style.backgroundColor = 'rgba(255,255,255,0.7)';
+            box.querySelectorAll('.resize-handle').forEach(handle => {
+                handle.style.display = 'block';
+            });
+        });
+    };
+
+    try {
+        if (flag === 1) { // Single Certificate
+            // Update text content for single entry
+            textBoxes.forEach(box => {
+                box.textContent = document.getElementById("userInput").value;
+                box.style.color = document.getElementById('colorPicker').value;
+                box.style.fontFamily = document.getElementById('fontSelect').value;
+                box.style.fontSize = document.getElementById('fontSize').value + 'px';
+            });
+
+            prepareTextBoxesForGeneration();
+            
+            await new Promise(resolve => setTimeout(resolve, 100));
+            const canvas = await html2canvas(container, { 
+                useCORS: true, 
+                allowTaint: true, 
+                backgroundColor: null, 
+                scale: 2 
+            });
+            const dataUrl = canvas.toDataURL('image/png', 1.0);
+
+            const link = document.createElement('a');
+            link.href = dataUrl;
+            link.download = 'certificate.png';
+            link.click();
+
+        } else { // Bulk Generation
+            prepareTextBoxesForGeneration();
+
+            // Process each row of data
+            for (let i = 0; i < data.length; i++) {
+                // Update text content for each text box with current row's data
+                textBoxes.forEach(box => {
+                    box.textContent = data[i][selectedColumn];
+                    box.style.color = document.getElementById('colorPicker').value;
+                    box.style.fontFamily = document.getElementById('fontSelect').value;
+                    box.style.fontSize = document.getElementById('fontSize').value + 'px';
+                });
+
+                await new Promise(resolve => setTimeout(resolve, 100));
+
+                const canvas = await html2canvas(container, {
+                    useCORS: true,
+                    allowTaint: true,
+                    backgroundColor: null,
+                    scale: 2,
+                    logging: false
+                });
+
+                const dataUrl = canvas.toDataURL('image/png', 1.0);
+                const base64Data = dataUrl.split(',')[1];
+                
+                const fileName = `certificate_${data[i][selectedColumn].replace(/[^a-z0-9]/gi, '_').toLowerCase()}.png`;
+                zip.file(fileName, base64Data, {base64: true});
+
+                loading.textContent = `Generating certificates... ${i + 1}/${data.length}`;
+            }
+
+            // Generate and download zip file
+            const content = await zip.generateAsync({type: 'blob'});
+            saveAs(content, 'certificates.zip');
+        }
+    } catch (error) {
+        console.error('Error generating certificates:', error);
+        alert('Error generating certificates. Please try again.');
+    } finally {
+        restoreTextBoxesUI(); // Restore the UI state regardless of success or failure
+        loading.style.display = 'none';
+    }
+    nextStep();
+}
+    function showSingleForm() {
+        isSingleMode = true;
+    // document.getElementById("single-form").style.display = "block";
+    // document.getElementById("bulk-form").style.display = "none";
+  }
+  function showBulkForm() {
+        isSingleMode = false;
+    // document.getElementById("bulk-form").style.display = "block";
+    // document.getElementById("single-form").style.display = "none";
+  }
+    </script>
+</body>
+</html>

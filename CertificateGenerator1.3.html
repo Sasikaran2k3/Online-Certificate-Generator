@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classic Certificate Generator</title>
+    <style>
+        body {
+            font-family: 'Georgia', serif;
+            line-height: 1.6;
+            color: #2c3e50;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f3e6;
+        }
+        h1, h2 {
+            text-align: center;
+            color: #34495e;
+        }
+        h1 {
+            margin-bottom: 20px;
+            font-size: 2.5em;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        }
+        .progress-bar {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .progress-step {
+            width: 23%;
+            height: 8px;
+            background-color: #d5c4a1;
+            border-radius: 4px;
+        }
+        .progress-step.active {
+            background-color: #8b4513;
+        }
+        .step-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            font-size: 0.9em;
+            color: #7f8c8d;
+        }
+        .step {
+            display: none;
+            background-color: #fff;
+            border: 1px solid #d5c4a1;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .step.active {
+            display: block;
+        }
+        input, select, button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #d5c4a1;
+            border-radius: 4px;
+            font-family: 'Georgia', serif;
+        }
+        button {
+            background-color: #8b4513;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #a0522d;
+        }
+        #canvas-container {
+            position: relative;
+            border: 1px solid #d5c4a1;
+            margin-bottom: 20px;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .text-box {
+            position: absolute;
+            border: 1px solid #8b4513;
+            padding: 5px;
+            cursor: move;
+            background-color: rgba(255, 255, 255, 0.7);
+            min-width: 100px;
+            min-height: 30px;
+        }
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .controls input, .controls select {
+            width: auto;
+            margin-bottom: 0;
+        }
+        .resize-handle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #8b4513;
+            border: 1px solid #fff;
+            border-radius: 50%;
+        }
+        .resize-handle.tl {
+            top: -5px;
+            left: -5px;
+            cursor: nw-resize;
+        }
+        .resize-handle.tr {
+            top: -5px;
+            right: -5px;
+            cursor: ne-resize;
+        }
+        .resize-handle.bl {
+            bottom: -5px;
+            left: -5px;
+            cursor: sw-resize;
+        }
+        .resize-handle.br {
+            bottom: -5px;
+            right: -5px;
+            cursor: se-resize;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+            color: #8b4513;
+            font-weight: bold;
+        }
+        input[type="radio"] {
+            width: auto;
+            display: inline-block;
+            margin-right: 10px;
+        }
+        input[type="color"] {
+            padding: 2px;
+            width: 50px !important;
+        }
+    </style>
+</head>
+<body>
+    <h1>Classic Certificate Generator</h1>
+    
+    <div class="progress-bar">
+        <div class="progress-step active"></div>
+        <div class="progress-step"></div>
+        <div class="progress-step"></div>
+        <div class="progress-step"></div>
+    </div>
+    <div class="step-labels">
+        <span>Upload</span>
+        <span>Details</span>
+        <span>Design</span>
+        <span>Generate</span>
+    </div>
+
+    <div id="step1" class="step active">
+        <h2>Upload Template</h2>
+        <input type="file" id="templateUpload" accept="image/*">
+        <div>
+            <label>
+                <input type="radio" name="genOption" value="single" checked onclick="showSingleForm()"> Single
+            </label>
+            <label>
+                <input type="radio" name="genOption" value="bulk" onclick="showBulkForm()"> Bulk
+            </label>
+        </div>
+        <button onclick="nextStep()">Next</button>
+    </div>
+
+    <div id="step2" class="step">
+        <h2>Enter Details</h2>
+        <div id="singleInput">
+            <input type="text" id="name" placeholder="Enter name">
+        </div>
+        <div id="bulkInput" style="display:none;">
+            <input type="file" id="dataUpload" accept=".xlsx,.csv">
+            <select id="columnSelect" style="display:none;"></select>
+        </div>
+        <button onclick="nextStep()">Next</button>
+    </div>
+
+    <div id="step3" class="step">
+        <h2>Design Certificate</h2>
+        <div class="controls">
+            <input type="color" id="colorPicker" value="#000000">
+            <select id="fontSelect">
+                <option value="Georgia">Georgia</option>
+                <option value="Times New Roman">Times New Roman</option>
+                <option value="Arial">Arial</option>
+                <option value="Verdana">Verdana</option>
+            </select>
+            <input type="number" id="fontSize" value="24" min="8" max="72">
+            <button onclick="addTextBox()">Add Text</button>
+        </div>
+        <div id="canvas-container">
+            <img id="certificateCanvas">
+        </div>
+        <button onclick="nextStep()">Next</button>
+    </div>
+
+    <div id="step4" class="step">
+        <h2>Generate Certificates</h2>
+        <button onclick="generateCertificates()">Generate</button>
+        <div class="loading" id="loading">
+            Generating certificates... Please wait...
+        </div>
+    </div>
+
+    <button onclick="resetForm()" style="margin-top: 20px;">Reset</button>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script>
+        let currentStep = 1;
+        let template = null;
+        let data = null;
+        let textBoxes = [];
+        let selectedColumn = '';
+        let isDragging = false;
+        let isResizing = false;
+        let currentTextBox = null;
+        let currentHandle = null;
+        let startX, startY, originalX, originalY, originalWidth, originalHeight;
+
+        function nextStep() {
+            document.getElementById(`step${currentStep}`).classList.remove('active');
+            currentStep++;
+            document.getElementById(`step${currentStep}`).classList.add('active');
+            updateProgressBar();
+        }
+
+        function updateProgressBar() {
+            const steps = document.querySelectorAll('.progress-step');
+            steps.forEach((step, index) => {
+                if (index < currentStep) {
+                    step.classList.add('active');
+                } else {
+                    step.classList.remove('active');
+                }
+            });
+        }
+
+        document.getElementById('templateUpload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const img = new Image();
+                    img.onload = function() {
+                        template = img;
+                        initCanvas();
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        document.getElementById('dataUpload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const workbook = XLSX.read(event.target.result, {type: 'binary'});
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    data = XLSX.utils.sheet_to_json(firstSheet);
+                    
+                    if (data.length > 0) {
+                        const columns = Object.keys(data[0]);
+                        const select = document.getElementById('columnSelect');
+                        select.innerHTML = columns.map(col => 
+                            `<option value="${col}">${col}</option>`
+                        ).join('');
+                        select.style.display = 'block';
+                    }
+                };
+                reader.readAsBinaryString(file);
+            }
+        });
+
+        function initCanvas() {
+            const canvas = document.getElementById('certificateCanvas');
+            canvas.src = template.src;
+            canvas.style.width = '100%';
+            canvas.style.height = 'auto';
+        }
+
+        function addTextBox() {
+            const container = document.getElementById('canvas-container');
+            const textBox = document.createElement('div');
+            textBox.className = 'text-box';
+
+            // Set text content based on mode
+            if (document.querySelector('input[name="genOption"]:checked').value === 'bulk') {
+                selectedColumn = document.getElementById('columnSelect').value;
+                if (data && data.length > 0 && selectedColumn in data[0]) {
+                    textBox.textContent = data[0][selectedColumn];
+                } else {
+                    textBox.textContent = 'Sample Text';
+                }
+            } else {
+                textBox.textContent = document.getElementById('name').value || 'Sample Text';
+            }
+
+            textBox.style.textAlign = 'center';
+            textBox.style.lineHeight = '50px';
+            textBox.style.fontSize = document.getElementById('fontSize').value + 'px';
+            textBox.style.color = document.getElementById('colorPicker').value;
+            textBox.style.fontFamily = document.getElementById('fontSelect').value;
+
+            const containerRect = container.getBoundingClientRect();
+            textBox.style.left = `${(containerRect.width - 200) / 2}px`;
+            textBox.style.top = `${(containerRect.height - 50) / 2}px`;
+            textBox.style.width = '200px';
+            textBox.style.height = '50px';
+
+            // Add resize handles
+            const handles = ['tl', 'tr', 'bl', 'br'];
+            handles.forEach(pos => {
+                const handle = document.createElement('div');
+                handle.className = `resize-handle ${pos}`;
+                handle.dataset.handle = pos;
+                textBox.appendChild(handle);
+            });
+
+            container.appendChild(textBox);
+            textBoxes.push(textBox);
+
+            textBox.addEventListener('mousedown', startDragging);
+            textBox.querySelectorAll('.resize-handle').forEach(handle => {
+                handle.addEventListener('mousedown', startResizing);
+            });
+
+            currentTextBox = textBox;
+        }
+
+        function startDragging(e) {
+            if (e.target.classList.contains('resize-handle')) return;
+            
+            isDragging = true;
+            currentTextBox = e.target.closest('.text-box');
+            startX = e.clientX;
+            startY = e.clientY;
+            originalX = currentTextBox.offsetLeft;
+            originalY = currentTextBox.offsetTop;
+
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', stopDragging);
+        }
+
+        function startResizing(e) {
+            e.stopPropagation();
+            isResizing = true;
+            currentTextBox = e.target.closest('.text-box');
+            currentHandle = e.target.dataset.handle;
+            startX = e.clientX;
+            startY = e.clientY;
+            originalWidth = currentTextBox.offsetWidth;
+            originalHeight = currentTextBox.offsetHeight;
+            originalX = currentTextBox.offsetLeft;
+            originalY = currentTextBox.offsetTop;
+
+            document.addEventListener('mousemove', resize);
+            document.addEventListener('mouseup', stopResizing);
+        }
+
+        function resize(e) {
+            if (!isResizing) return;
+
+            const deltaX = e.clientX - startX;
+            const deltaY = e.clientY - startY;
+
+            switch (currentHandle) {
+                case 'tl':
+                    currentTextBox.style.width = `${originalWidth - deltaX}px`;
+                    currentTextBox.style.height = `${originalHeight - deltaY}px`;
+                    currentTextBox.style.left = `${originalX + deltaX}px`;
+                    currentTextBox.style.top = `${originalY + deltaY}px`;
+                    break;
+                case 'tr':
+                    currentTextBox.style.width = `${originalWidth + deltaX}px`;
+                    currentTextBox.style.height = `${originalHeight - deltaY}px`;
+                    currentTextBox.style.top = `${originalY + deltaY}px`;
+                    break;
+                case 'bl':
+                    currentTextBox.style.width = `${originalWidth - deltaX}px`;
+                    currentTextBox.style.height = `${originalHeight + deltaY}px`;
+                    currentTextBox.style.left = `${originalX + deltaX}px`;
+                    break;
+                case 'br':
+                    currentTextBox.style.width = `${originalWidth + deltaX}px`;
+                    currentTextBox.style.height = `${originalHeight + deltaY}px`;
+                    break;
+            }
+        }
+
+        function stopDragging() {
+            isDragging = false;
+            document.removeEventListener('mousemove', drag);
+            document.removeEventListener('mouseup', stopDragging);
+        }
+
+            function drag(e) {
+            if (!isDragging) return;
+
+            const deltaX = e.clientX - startX;
+            const deltaY = e.clientY - startY;
+
+            currentTextBox.style.left = `${originalX + deltaX}px`;
+            currentTextBox.style.top = `${originalY + deltaY}px`;
+        }
+
+        function stopDragging() {
+            isDragging = false;
+            document.removeEventListener('mousemove', drag);
+            document.removeEventListener('mouseup', stopDragging);
+        }
+
+        function showSingleForm() {
+            document.getElementById("single-form").style.display = "block";
+            document.getElementById("bulk-form").style.display = "none";
+        }
+
+        function showBulkForm() {
+            document.getElementById("bulk-form").style.display = "block";
+            document.getElementById("single-form").style.display = "none";
+        }
+
+        async function generateCertificates() {
+            const loading = document.getElementById('loading');
+            loading.style.display = 'block';
+
+            const zip = new JSZip();
+            const container = document.getElementById('canvas-container');
+
+            const prepareTextBoxesForGeneration = () => {
+                textBoxes.forEach(box => {
+                    box.style.border = 'none';
+                    box.style.backgroundColor = 'transparent';
+                    box.querySelectorAll('.resize-handle').forEach(handle => {
+                        handle.style.display = 'none';
+                    });
+                });
+            };
+
+            const restoreTextBoxesUI = () => {
+                textBoxes.forEach(box => {
+                    box.style.border = '1px solid #8b4513';
+                    box.style.backgroundColor = 'rgba(255,255,255,0.7)';
+                    box.querySelectorAll('.resize-handle').forEach(handle => {
+                        handle.style.display = 'block';
+                    });
+                });
+            };
+
+            try {
+                const isSingleMode = document.querySelector('input[name="genOption"]:checked').value === 'single';
+
+                if (isSingleMode) {
+                    textBoxes.forEach(box => {
+                        box.textContent = document.getElementById('name').value;
+                        box.style.color = document.getElementById('colorPicker').value;
+                        box.style.fontFamily = document.getElementById('fontSelect').value;
+                        box.style.fontSize = document.getElementById('fontSize').value + 'px';
+                    });
+
+                    prepareTextBoxesForGeneration();
+                    
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    const canvas = await html2canvas(container, { 
+                        useCORS: true, 
+                        allowTaint: true, 
+                        backgroundColor: null, 
+                        scale: 2 
+                    });
+                    const dataUrl = canvas.toDataURL('image/png', 1.0);
+
+                    const link = document.createElement('a');
+                    link.href = dataUrl;
+                    link.download = `certificate_${document.getElementById('name').value.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.png`;
+                    link.click();
+
+                } else {
+                    prepareTextBoxesForGeneration();
+
+                    for (let i = 0; i < data.length; i++) {
+                        textBoxes.forEach(box => {
+                            box.textContent = data[i][selectedColumn];
+                            box.style.color = document.getElementById('colorPicker').value;
+                            box.style.fontFamily = document.getElementById('fontSelect').value;
+                            box.style.fontSize = document.getElementById('fontSize').value + 'px';
+                        });
+
+                        await new Promise(resolve => setTimeout(resolve, 100));
+
+                        const canvas = await html2canvas(container, {
+                            useCORS: true,
+                            allowTaint: true,
+                            backgroundColor: null,
+                            scale: 2,
+                            logging: false
+                        });
+
+                        const dataUrl = canvas.toDataURL('image/png', 1.0);
+                        const base64Data = dataUrl.split(',')[1];
+                        
+                        const fileName = `certificate_${data[i][selectedColumn].replace(/[^a-z0-9]/gi, '_').toLowerCase()}.png`;
+                        zip.file(fileName, base64Data, {base64: true});
+
+                        loading.textContent = `Generating certificates... ${i + 1}/${data.length}`;
+                    }
+
+                    const content = await zip.generateAsync({type: 'blob'});
+                    saveAs(content, 'certificates.zip');
+                }
+            } catch (error) {
+                console.error('Error generating certificates:', error);
+                alert('Error generating certificates. Please try again.');
+            } finally {
+                restoreTextBoxesUI();
+                loading.style.display = 'none';
+            }
+        }
+
+        function resetForm() {
+            currentStep = 1;
+            template = null;
+            data = null;
+            textBoxes = [];
+            selectedColumn = '';
+            isDragging = false;
+            isResizing = false;
+            currentTextBox = null;
+            currentHandle = null;
+
+            // Reset all steps
+            document.querySelectorAll('.step').forEach((step, index) => {
+                if (index === 0) {
+                    step.classList.add('active');
+                } else {
+                    step.classList.remove('active');
+                }
+            });
+
+            // Reset progress bar
+            document.querySelectorAll('.progress-step').forEach((step, index) => {
+                if (index === 0) {
+                    step.classList.add('active');
+                } else {
+                    step.classList.remove('active');
+                }
+            });
+
+            // Clear canvas
+            const canvasContainer = document.getElementById('canvas-container');
+            const certificateCanvas = document.getElementById('certificateCanvas');
+            certificateCanvas.src = '';
+            
+            // Remove all text boxes
+            const textBoxElements = canvasContainer.querySelectorAll('.text-box');
+            textBoxElements.forEach(box => box.remove());
+
+            // Reset file inputs
+            document.getElementById('templateUpload').value = '';
+            const dataUpload = document.getElementById('dataUpload');
+            if (dataUpload) dataUpload.value = '';
+
+            // Reset other inputs
+            document.getElementById('name').value = '';
+            document.getElementById('colorPicker').value = '#000000';
+            document.getElementById('fontSelect').value = 'Georgia';
+            document.getElementById('fontSize').value = '24';
+        }
